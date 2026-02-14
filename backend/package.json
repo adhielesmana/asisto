@@ -1,0 +1,13 @@
+
+{
+  "name": "asisto-backend",
+  "version": "2.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.0.0",
+    "axios": "^1.6.0"
+  }
+}
