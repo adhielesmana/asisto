@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 echo "Updating system..."
 dnf update -y
@@ -8,14 +9,6 @@ dnf install -y docker docker-compose nginx git curl
 
 systemctl enable docker
 systemctl start docker
-
-echo "Installing Ollama..."
-curl -fsSL https://ollama.com/install.sh | sh
-systemctl enable ollama
-systemctl start ollama
-
-echo "Pulling llama3 model..."
-ollama pull llama3
 
 echo "Configuring Nginx for asisto.maxnetplus.id..."
 
@@ -39,11 +32,23 @@ EOL
 systemctl enable nginx
 systemctl restart nginx
 
+if [ ! -f .env ] && [ -f .env.example ]; then
+    cp .env.example .env
+    echo "Created .env from .env.example"
+fi
+
+echo "Starting Ollama container..."
+docker-compose up -d ollama
+
+echo "Pulling llama3 inside Docker..."
+COMPOSE_PROFILES=init docker-compose run --rm ollama-init
+
 echo "Starting ASISTO stack..."
-docker-compose up -d --build
+docker-compose up -d --build backend frontend prometheus grafana
 
 echo "ASISTO deployed successfully!"
 echo "Frontend: https://asisto.maxnetplus.id"
 echo "Backend API: https://asisto.maxnetplus.id/api"
+echo "Ollama API: http://server-ip:11434"
 echo "Prometheus: http://server-ip:9090"
 echo "Grafana: http://server-ip:3001 (admin/admin)"

@@ -7,7 +7,7 @@ error_exit() { printf "[update][error] %s\n" "$1" >&2; exit 1; }
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_ROOT"
 
-for cmd in node npm docker; do
+for cmd in docker; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     error_exit "Required command '$cmd' missing. Install it before running this script."
   fi
@@ -26,19 +26,6 @@ get_compose_cmd() {
 COMPOSE_CMD="$(get_compose_cmd)"
 log "Using compose command: $COMPOSE_CMD"
 
-log "Refreshing backend dependencies"
-(
-  cd backend
-  npm install
-)
-
-log "Refreshing frontend dependencies and artifacts"
-(
-  cd frontend
-  npm install
-  npm run build
-)
-
 log "Pulling latest container images"
 if [[ "$COMPOSE_CMD" == "docker compose" ]]; then
   $COMPOSE_CMD pull --include-deps
@@ -46,7 +33,13 @@ else
   $COMPOSE_CMD pull
 fi
 
+log "Refreshing the Ollama container"
+$COMPOSE_CMD up -d ollama
+
+log "Ensuring the configured Ollama model exists inside Docker"
+COMPOSE_PROFILES=init $COMPOSE_CMD run --rm ollama-init
+
 log "Rebuilding and restarting the stack"
-$COMPOSE_CMD up -d --build
+$COMPOSE_CMD up -d --build backend frontend prometheus grafana
 
 log "Update complete."

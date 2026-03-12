@@ -1,28 +1,70 @@
 
-version: "3.9"
-
 services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles:
+      - init
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+    volumes:
+      - ./docker/ollama/pull-model.sh:/scripts/pull-model.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/pull-model.sh"]
 
   backend:
     build: ./backend
     restart: always
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434/api/generate}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      PUTER_AUTH_TOKEN: ${PUTER_AUTH_TOKEN:-}
+      PUTER_MODEL: ${PUTER_MODEL:-}
     ports:
       - "4000:4000"
+    volumes:
+      - knowledge_data:/app/data
 
   frontend:
     build: ./frontend
     restart: always
+    depends_on:
+      - backend
     ports:
       - "3000:3000"
 
   prometheus:
     image: prom/prometheus
+    restart: always
+    depends_on:
+      - backend
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
     ports:
       - "9090:9090"
 
   grafana:
     image: grafana/grafana
+    restart: always
+    volumes:
+      - grafana_data:/var/lib/grafana
     ports:
       - "3001:3000"
+
+volumes:
+  grafana_data:
+  knowledge_data:
+  ollama_data:
+  prometheus_data:

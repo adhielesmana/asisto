@@ -24,11 +24,18 @@ get_compose_cmd() {
 COMPOSE_CMD="$(get_compose_cmd)"
 log "Using compose command: $COMPOSE_CMD"
 
+log "Starting Ollama inside Docker"
+$COMPOSE_CMD up -d ollama
+
+log "Pulling the configured Ollama model inside Docker"
+COMPOSE_PROFILES=init $COMPOSE_CMD run --rm ollama-init
+
 log "Building and starting the ASISTO stack"
-$COMPOSE_CMD up -d --build
+$COMPOSE_CMD up -d --build backend frontend prometheus grafana
 
 log "Deployment complete."
 log " - Frontend: http://localhost:3000"
 log " - Backend: http://localhost:4000/api/health"
+log " - Ollama API: http://localhost:11434"
 log " - Prometheus: http://localhost:9090"
 log " - Grafana: http://localhost:3001"
