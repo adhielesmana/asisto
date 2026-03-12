@@ -1,10 +1,11 @@
 const fs = require('node:fs/promises')
+const fsSync = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
+const vm = require('node:vm')
 const Fastify = require('fastify')
 const cors = require('@fastify/cors')
 const axios = require('axios')
-const { init } = require('@heyputer/puter.js/src/init.cjs')
 
 const fastify = Fastify({ logger: true })
 
@@ -160,10 +161,39 @@ function getPuterClient() {
   }
 
   if (!puterClient) {
-    puterClient = init(PUTER_AUTH_TOKEN)
+    puterClient = createPuterClient(PUTER_AUTH_TOKEN)
   }
 
   return puterClient
+}
+
+function createPuterClient(authToken) {
+  const goodContext = {
+    PUTER_API_ORIGIN: globalThis.PUTER_API_ORIGIN,
+    PUTER_ORIGIN: globalThis.PUTER_ORIGIN,
+  }
+
+  Object.getOwnPropertyNames(globalThis).forEach((name) => {
+    try {
+      goodContext[name] = globalThis[name]
+    } catch (error) {
+      // Ignore globals that cannot be copied into the VM context.
+    }
+  })
+
+  goodContext.globalThis = goodContext
+
+  const bundlePath = require.resolve('@heyputer/puter.js/dist/puter.cjs')
+  const code = fsSync.readFileSync(bundlePath, 'utf8')
+  const context = vm.createContext(goodContext)
+
+  vm.runInNewContext(code, context)
+
+  if (authToken) {
+    goodContext.puter.setAuthToken(authToken)
+  }
+
+  return goodContext.puter
 }
 
 function extractPuterText(result) {

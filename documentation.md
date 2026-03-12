@@ -50,14 +50,14 @@ The script gracefully handles whether `docker compose` or `docker-compose` is av
 ## Additional Notes
 - `install.sh` automates a Docker-first installation (Docker, Docker Compose, nginx proxy, Ollama container startup, model pull, and `docker-compose up -d --build`). It can still be useful if you need to bootstrap a fresh machine; otherwise, you can rely on the three new scripts to manage each lifecycle stage.
 - The frontend currently uses Next.js 14.0.0 and warns about a known security vulnerability (see npm install output). Update `next` to a patched release before exposing the app publicly.
-- Ollama now runs in Docker and is reachable by the backend at `http://ollama:11434/api/generate` on the internal Compose network.
+- Ollama now runs in Docker and is reachable by the backend at `http://ollama:11434/api/generate` on the internal Compose network. It is intentionally not published on a host port.
 - There is no dedicated application SQL/NoSQL database in this repo yet; persistent data currently lives in Docker volumes for Ollama models, the knowledge cache, Prometheus, and Grafana.
 - Puter remains an external cloud fallback by design. The local AI runtime is containerized, but Puter calls still leave the stack when fallback is used.
 
 ## Quick Verification
 - Backend health: `curl http://localhost:4000/api/health`
-- Frontend: open `http://localhost:3000/` and submit a prompt
-- Ollama API: `curl http://localhost:11434/api/tags`
+- Frontend: open `http://localhost:3100/` and submit a prompt
+- Ollama models: `docker compose exec ollama ollama list`
 - Knowledge fallback: ask a current-events or documentation question, then inspect the cached answers with `docker compose exec backend cat /app/data/knowledge.json`
 - Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001` (default user/password `admin/admin` on a fresh install)
+- Grafana: `http://localhost:3301` (default user/password `admin/admin` on a fresh install)

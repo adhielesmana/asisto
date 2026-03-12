@@ -34,8 +34,8 @@ log "Building and starting the ASISTO stack"
 $COMPOSE_CMD up -d --build backend frontend prometheus grafana
 
 log "Deployment complete."
-log " - Frontend: http://localhost:3000"
+log " - Frontend: http://localhost:3100"
 log " - Backend: http://localhost:4000/api/health"
-log " - Ollama API: http://localhost:11434"
+log " - Ollama: internal Docker service only"
 log " - Prometheus: http://localhost:9090"
-log " - Grafana: http://localhost:3001"
+log " - Grafana: http://localhost:3301"

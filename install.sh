@@ -49,6 +49,6 @@ docker-compose up -d --build backend frontend prometheus grafana
 echo "ASISTO deployed successfully!"
 echo "Frontend: https://asisto.maxnetplus.id"
 echo "Backend API: https://asisto.maxnetplus.id/api"
-echo "Ollama API: http://server-ip:11434"
+echo "Ollama: internal Docker service only"
 echo "Prometheus: http://server-ip:9090"
-echo "Grafana: http://server-ip:3001 (admin/admin)"
+echo "Grafana: http://server-ip:3301 (admin/admin)"
