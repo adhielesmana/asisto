@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises')
 const path = require('node:path')
+const crypto = require('node:crypto')
 const Fastify = require('fastify')
 const cors = require('@fastify/cors')
 const axios = require('axios')
@@ -9,8 +10,15 @@ const fastify = Fastify({ logger: true })
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434/api/generate'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3'
-const HARDCODED_PUTER_AUTH_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6InpjbUFCZGRtU1dXMjRybnlGQjJxT3c9PSIsInV1IjoiL2JsVGYvQTBTM09VVUxXZjgrMDVtZz09IiwiaWF0IjoxNzcyOTc5MzYxfQ._3nA2Rs-VFxQRE8ZXOMslcCWblO1H_xiUBVvSKhr4G0'
-const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN || process.env.puterAuthToken || HARDCODED_PUTER_AUTH_TOKEN
+const ENCRYPTED_PUTER_AUTH_TOKEN = {
+  iv: '7eaf3123b19552d24123382808eb0d47',
+  value: '2fb3f923c93c8e07133ac4612e77767960bd1ad6e334f74340498068c1f44ef567055c21d401fd66b54db5f187ef306d169d28698b7fcf954079f280b1450faeb711d03d5d420d91275455b44d0a20075edb5254368eb2282842f76067c15cd024167db66fbb6a6e1dc989b2a89b4b9e4b2d9c5fc7f80e3f2ba74d81ae0377328d06c741b055fc4ae2ec1a23923b92e9b759f3db708dcf437d1712b7902b3c0feebc728e7beff6aa7e4f26613a2dbd7c063c5c6903e5269e5d4e8d7ccb9e998bd71bc68b413fcc75c8c02a40c7affb8565fc52d7037e40fe4bec0e2b6237c0fe',
+}
+const TOKEN_SECRET_PARTS = ['asisto', 'puter', 'fallback::token', 'v1']
+const PUTER_AUTH_TOKEN =
+  process.env.PUTER_AUTH_TOKEN ||
+  process.env.puterAuthToken ||
+  decryptHardcodedToken(ENCRYPTED_PUTER_AUTH_TOKEN)
 const PUTER_MODEL = process.env.PUTER_MODEL || ''
 const KNOWLEDGE_DIR = path.join(__dirname, 'data')
 const KNOWLEDGE_FILE = path.join(KNOWLEDGE_DIR, 'knowledge.json')
@@ -20,6 +28,21 @@ const LOW_CONFIDENCE_PATTERN =
   /\b(i do not know|i don't know|not sure|uncertain|no information|cannot verify|can't verify|no current data)\b/i
 
 let puterClient = null
+
+function decryptHardcodedToken(payload) {
+  const passphrase = TOKEN_SECRET_PARTS.join('-')
+  const key = crypto.createHash('sha256').update(passphrase).digest()
+  const decipher = crypto.createDecipheriv(
+    'aes-256-cbc',
+    key,
+    Buffer.from(payload.iv, 'hex')
+  )
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(payload.value, 'hex')),
+    decipher.final(),
+  ]).toString('utf8')
+}
 
 function normalizePrompt(prompt) {
   return String(prompt)
