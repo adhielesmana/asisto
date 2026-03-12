@@ -1,8 +1,7 @@
 const fs = require('node:fs/promises')
-const fsSync = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
-const vm = require('node:vm')
+const { Blob: NodeBlob, File: NodeFile } = require('node:buffer')
 const Fastify = require('fastify')
 const cors = require('@fastify/cors')
 const axios = require('axios')
@@ -11,6 +10,7 @@ const fastify = Fastify({ logger: true })
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434/api/generate'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3'
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 600000)
 const ENCRYPTED_PUTER_AUTH_TOKEN = {
   iv: '7eaf3123b19552d24123382808eb0d47',
   value: '2fb3f923c93c8e07133ac4612e77767960bd1ad6e334f74340498068c1f44ef567055c21d401fd66b54db5f187ef306d169d28698b7fcf954079f280b1450faeb711d03d5d420d91275455b44d0a20075edb5254368eb2282842f76067c15cd024167db66fbb6a6e1dc989b2a89b4b9e4b2d9c5fc7f80e3f2ba74d81ae0377328d06c741b055fc4ae2ec1a23923b92e9b759f3db708dcf437d1712b7902b3c0feebc728e7beff6aa7e4f26613a2dbd7c063c5c6903e5269e5d4e8d7ccb9e998bd71bc68b413fcc75c8c02a40c7affb8565fc52d7037e40fe4bec0e2b6237c0fe',
@@ -167,33 +167,71 @@ function getPuterClient() {
   return puterClient
 }
 
-function createPuterClient(authToken) {
-  const goodContext = {
-    PUTER_API_ORIGIN: globalThis.PUTER_API_ORIGIN,
-    PUTER_ORIGIN: globalThis.PUTER_ORIGIN,
+function ensurePuterGlobals() {
+  if (!globalThis.Blob) {
+    globalThis.Blob = NodeBlob
   }
 
-  Object.getOwnPropertyNames(globalThis).forEach((name) => {
-    try {
-      goodContext[name] = globalThis[name]
-    } catch (error) {
-      // Ignore globals that cannot be copied into the VM context.
+  if (!globalThis.File) {
+    globalThis.File = NodeFile
+  }
+
+  if (!globalThis.CustomEvent) {
+    globalThis.CustomEvent = class CustomEvent extends Event {
+      constructor(name, params = {}) {
+        super(name, params)
+        this.detail = params.detail
+      }
     }
-  })
+  }
+}
 
-  goodContext.globalThis = goodContext
+function createPuterClient(authToken) {
+  ensurePuterGlobals()
 
-  const bundlePath = require.resolve('@heyputer/puter.js/dist/puter.cjs')
-  const code = fsSync.readFileSync(bundlePath, 'utf8')
-  const context = vm.createContext(goodContext)
+  require('@heyputer/puter.js/dist/puter.cjs')
 
-  vm.runInNewContext(code, context)
+  if (!globalThis.puter) {
+    throw new Error('Puter client failed to initialize.')
+  }
 
   if (authToken) {
-    goodContext.puter.setAuthToken(authToken)
+    globalThis.puter.setAuthToken(authToken)
   }
 
-  return goodContext.puter
+  return globalThis.puter
+}
+
+function getErrorMessage(error, fallbackMessage) {
+  if (!error) {
+    return fallbackMessage
+  }
+
+  if (typeof error === 'string') {
+    return error
+  }
+
+  if (typeof error.message === 'string' && error.message) {
+    return error.message
+  }
+
+  if (typeof error.error?.message === 'string' && error.error.message) {
+    return error.error.message
+  }
+
+  if (typeof error.response?.data?.error === 'string' && error.response.data.error) {
+    return error.response.data.error
+  }
+
+  if (typeof error.response?.data?.details === 'string' && error.response.data.details) {
+    return error.response.data.details
+  }
+
+  try {
+    return JSON.stringify(error)
+  } catch (jsonError) {
+    return fallbackMessage
+  }
 }
 
 function extractPuterText(result) {
@@ -224,22 +262,32 @@ function extractPuterText(result) {
 }
 
 async function askOllama(prompt) {
-  const response = await axios.post(
-    OLLAMA_URL,
-    {
-      model: OLLAMA_MODEL,
-      prompt,
-      stream: false,
-    },
-    {
-      timeout: 120000,
-    }
-  )
+  try {
+    const response = await axios.post(
+      OLLAMA_URL,
+      {
+        model: OLLAMA_MODEL,
+        prompt,
+        stream: false,
+      },
+      {
+        timeout: OLLAMA_TIMEOUT_MS,
+      }
+    )
 
-  return {
-    provider: 'ollama',
-    model: OLLAMA_MODEL,
-    response: response.data?.response || '',
+    return {
+      provider: 'ollama',
+      model: OLLAMA_MODEL,
+      response: response.data?.response || '',
+    }
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      throw new Error(
+        `Ollama timed out after ${Math.round(OLLAMA_TIMEOUT_MS / 1000)} seconds.`
+      )
+    }
+
+    throw new Error(getErrorMessage(error, 'Ollama request failed.'))
   }
 }
 
@@ -255,13 +303,17 @@ async function askPuter(prompt) {
     options.model = PUTER_MODEL
   }
 
-  const result = await puter.ai.chat(prompt, options)
-  const response = extractPuterText(result)
+  try {
+    const result = await puter.ai.chat(prompt, options)
+    const response = extractPuterText(result)
 
-  return {
-    provider: 'puter',
-    model: PUTER_MODEL || 'puter-default',
-    response,
+    return {
+      provider: 'puter',
+      model: PUTER_MODEL || 'puter-default',
+      response,
+    }
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Puter request failed.'))
   }
 }
 
@@ -281,13 +333,20 @@ async function resolvePrompt(prompt, preferKnowledge) {
     }
 
     if (getPuterClient()) {
-      const puterResult = await askPuter(prompt)
-      await saveKnowledgeAnswer(prompt, puterResult.response, puterResult)
+      try {
+        const puterResult = await askPuter(prompt)
+        await saveKnowledgeAnswer(prompt, puterResult.response, puterResult)
 
-      return {
-        ...puterResult,
-        strategy: 'knowledge-fallback',
-        cached: false,
+        return {
+          ...puterResult,
+          strategy: 'knowledge-fallback',
+          cached: false,
+        }
+      } catch (error) {
+        fastify.log.warn(
+          { err: error },
+          'Puter knowledge fallback failed, continuing with Ollama'
+        )
       }
     }
   }
@@ -296,13 +355,20 @@ async function resolvePrompt(prompt, preferKnowledge) {
     const ollamaResult = await askOllama(prompt)
 
     if (LOW_CONFIDENCE_PATTERN.test(ollamaResult.response) && getPuterClient()) {
-      const puterResult = await askPuter(prompt)
-      await saveKnowledgeAnswer(prompt, puterResult.response, puterResult)
+      try {
+        const puterResult = await askPuter(prompt)
+        await saveKnowledgeAnswer(prompt, puterResult.response, puterResult)
 
-      return {
-        ...puterResult,
-        strategy: 'low-confidence-fallback',
-        cached: false,
+        return {
+          ...puterResult,
+          strategy: 'low-confidence-fallback',
+          cached: false,
+        }
+      } catch (error) {
+        fastify.log.warn(
+          { err: error },
+          'Puter low-confidence fallback failed, returning Ollama response'
+        )
       }
     }
 
@@ -312,17 +378,25 @@ async function resolvePrompt(prompt, preferKnowledge) {
       cached: false,
     }
   } catch (error) {
-    if (!getPuterClient()) {
+    if (!shouldUseKnowledgePath || !getPuterClient()) {
       throw error
     }
 
-    const puterResult = await askPuter(prompt)
-    await saveKnowledgeAnswer(prompt, puterResult.response, puterResult)
+    try {
+      const puterResult = await askPuter(prompt)
+      await saveKnowledgeAnswer(prompt, puterResult.response, puterResult)
 
-    return {
-      ...puterResult,
-      strategy: 'ollama-error-fallback',
-      cached: false,
+      return {
+        ...puterResult,
+        strategy: 'ollama-error-fallback',
+        cached: false,
+      }
+    } catch (puterError) {
+      fastify.log.warn(
+        { err: puterError },
+        'Puter fallback failed after Ollama error'
+      )
+      throw error
     }
   }
 }
