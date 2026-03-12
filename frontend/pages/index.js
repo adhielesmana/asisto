@@ -12,7 +12,7 @@ function getApiUrl() {
   }
 
   const { protocol, hostname, port } = window.location
-  if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '3000') {
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && port !== '4000') {
     return `${protocol}//${hostname}:4000/api/ai/ask`
   }
 
