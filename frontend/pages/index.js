@@ -47,6 +47,8 @@ export default function Home() {
     { type: 'info', text: 'Initializing ASISTO environment...' },
     { type: 'info', text: 'Backend connected to http://localhost:4000' },
   ])
+  const [envTree, setEnvTree] = useState([])
+  const [selectedFile, setSelectedFile] = useState(null)
   const chatEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -56,6 +58,25 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    const loadTree = async () => {
+      try {
+        const res = await fetch('/api/environments')
+        if (!res.ok) throw new Error('Unable to load environment tree')
+        const data = await res.json()
+        setEnvTree(data.environments || [])
+        const firstFile = findFirstFile(data.environments || [])
+        if (firstFile) {
+          loadEnvFile(firstFile)
+        }
+      } catch (error) {
+        setTerminalLogs((prev) => [...prev, { type: 'error', text: 'Unable to load environments.' }])
+      }
+    }
+
+    loadTree()
+  }, [])
 
   const applyCode = (newCode) => {
     setCode(newCode)
@@ -129,7 +150,58 @@ export default function Home() {
       parts.push(<span key={lastIndex}>{content.slice(lastIndex)}</span>)
     }
 
-    return parts.length > 0 ? parts : content
+  return parts.length > 0 ? parts : content
+  }
+
+  const findFirstFile = (nodes) => {
+    if (!nodes?.length) return null
+    for (const node of nodes) {
+      if (node.type === 'file') return node
+      if (node.children?.length) {
+        const deep = findFirstFile(node.children)
+        if (deep) return deep
+      }
+    }
+    return null
+  }
+
+  const loadEnvFile = async (node) => {
+    if (!node || node.type !== 'file') return
+    try {
+      const res = await fetch(`/api/env-file?path=${encodeURIComponent(node.path)}`)
+      if (!res.ok) throw new Error('failed to load')
+      const text = await res.text()
+      setCode(text)
+      setSelectedFile(node)
+      setTerminalLogs((prev) => [...prev, { type: 'info', text: `Loaded ${node.name}` }])
+    } catch (error) {
+      setTerminalLogs((prev) => [...prev, { type: 'error', text: `Unable to load ${node.name}` }])
+    }
+  }
+
+  const renderEnvNode = (node, level = 0) => {
+    if (!node) return null
+    if (node.type === 'folder') {
+      return (
+        <div key={node.path} className="env-folder">
+          <div className="env-folder-label" style={{ paddingLeft: level * 12 + 12 }}>
+            {node.name}
+          </div>
+          <div className="env-folder-children">{node.children?.map((child) => renderEnvNode(child, level + 1))}</div>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        key={node.path}
+        className={`env-file ${selectedFile?.path === node.path ? 'active' : ''}`}
+        style={{ paddingLeft: level * 12 + 24 }}
+        onClick={() => loadEnvFile(node)}
+      >
+        {node.name}
+      </div>
+    )
   }
 
   return (
@@ -172,12 +244,18 @@ export default function Home() {
             <div className="panel-header">{activeTab === 'explorer' ? 'Explorer' : 'Chat History'}</div>
             <div className="sidebar-content">
               {activeTab === 'explorer' ? (
-                <div className="folder-tree">
-                  <div className="folder-item">📁 src</div>
-                  <div className="folder-item active">📄 index.js</div>
-                  <div className="folder-item">📄 styles.css</div>
-                  <div className="folder-item">📄 README.md</div>
-                </div>
+                envTree.length ? (
+                envTree.map((node) => (
+                  <div key={`root-${node.path}`} className="env-tree-root">
+                    {renderEnvNode(node)}
+                  </div>
+                ))
+                ) : (
+                  <div className="empty-history">
+                    <div>No environments detected yet.</div>
+                    <small>Run `./deploy.sh` to create environment folders.</small>
+                  </div>
+                )
               ) : (
                 <div className="empty-history">
                   <div>No past conversations yet.</div>
@@ -445,6 +523,37 @@ export default function Home() {
           display: flex;
           flex-direction: column;
           gap: 8px;
+        }
+
+        .env-tree-root {
+          margin-bottom: 12px;
+        }
+
+        .env-folder-label {
+          font-size: 13px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.2em;
+          color: rgba(241, 245, 249, 0.8);
+          margin-bottom: 4px;
+        }
+
+        .env-folder-children {
+          margin-left: 6px;
+        }
+
+        .env-file {
+          cursor: pointer;
+          padding: 6px 8px;
+          border-radius: 8px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: rgba(226, 232, 240, 0.9);
+        }
+
+        .env-file.active {
+          background: rgba(59, 130, 246, 0.2);
+          color: #bfdbfe;
         }
 
         .folder-item {
