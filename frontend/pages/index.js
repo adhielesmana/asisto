@@ -39,6 +39,13 @@ const FolderIcon = () => (
   </svg>
 )
 
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+  </svg>
+)
+
 export default function Home() {
   const [threads, setThreads] = useState([])
   const [activeThreadId, setActiveThreadId] = useState(null)
@@ -51,6 +58,7 @@ export default function Home() {
   const [suggestedFilename, setSuggestedFilename] = useState('')
   const [editingThreadId, setEditingThreadId] = useState(null)
   const [editingName, setEditingName] = useState('')
+  const [copyFeedback, setCopyFeedback] = useState(false)
   const chatEndRef = useRef(null)
   const editInputRef = useRef(null)
 
@@ -202,6 +210,16 @@ export default function Home() {
     }
     setEditingThreadId(null)
     setEditingName('')
+  }
+
+  const copyCodeToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(codeOutput)
+      setCopyFeedback(true)
+      setTimeout(() => setCopyFeedback(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
+    }
   }
 
   const renderFolderTree = (nodes, level = 0) => {
@@ -413,9 +431,18 @@ export default function Home() {
                 <div className="code-area">
                   <div className="code-header">
                     <div>{diffView ? 'Diff Preview' : 'Generated Code'} {suggestedFilename && <span className="filename">{suggestedFilename}</span>}</div>
-                    <button onClick={applyCode} disabled={!activeThread.folder} className="btn-apply">
-                      {activeThread.folder ? 'Apply' : 'Select folder'}
-                    </button>
+                    <div className="code-header-actions">
+                      <button
+                        onClick={copyCodeToClipboard}
+                        className="btn-action"
+                        title="Copy code to clipboard"
+                      >
+                        <CopyIcon /> {copyFeedback ? 'Copied!' : 'Copy'}
+                      </button>
+                      <button onClick={applyCode} disabled={!activeThread.folder} className="btn-apply">
+                        {activeThread.folder ? 'Apply' : 'Select folder'}
+                      </button>
+                    </div>
                   </div>
                   <div className="code-block">
                     {diffView ? (
@@ -842,6 +869,32 @@ export default function Home() {
         .btn-apply:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        .code-header-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .btn-action {
+          padding: 6px 12px;
+          background: #333;
+          border: 1px solid #555;
+          color: #ccc;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+          background: #3d3d3d;
+          border-color: #666;
+          color: #e5e5e5;
         }
 
         .code-block {
