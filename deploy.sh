@@ -30,7 +30,7 @@ $COMPOSE_CMD pull ollama
 log "Starting Ollama inside Docker"
 $COMPOSE_CMD up -d ollama
 
-log "Pulling the base coder model and creating asisto-coder inside Docker"
+log "Pulling the code models and creating asisto-coder inside Docker"
 COMPOSE_PROFILES=init $COMPOSE_CMD run --rm ollama-init
 
 log "Building and starting the ASISTO stack"

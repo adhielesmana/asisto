@@ -16,6 +16,7 @@ services:
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_BASE_MODEL: ${OLLAMA_BASE_MODEL:-qwen2.5-coder:1.5b}
       OLLAMA_CUSTOM_MODEL: ${OLLAMA_CUSTOM_MODEL:-asisto-coder}
+      OLLAMA_ACTION_MODEL: ${OLLAMA_ACTION_MODEL:-llama3}
     volumes:
       - ./docker/ollama:/scripts:ro
     entrypoint: ["/bin/sh", "/scripts/pull-model.sh"]
@@ -28,6 +29,16 @@ services:
     environment:
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434/api/generate}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-asisto-coder}
+      OLLAMA_ACTION_MODEL: ${OLLAMA_ACTION_MODEL:-llama3}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_LATEST_MODEL: ${OPENAI_LATEST_MODEL:-gpt-5.2}
+      OPENAI_MINI_MODEL: ${OPENAI_MINI_MODEL:-gpt-5.4-mini}
+      OPENAI_CHEAPEST_MODEL: ${OPENAI_CHEAPEST_MODEL:-gpt-5.4-nano}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_OPUS_MODEL: ${ANTHROPIC_OPUS_MODEL:-claude-opus-4-1-20250805}
+      ANTHROPIC_SONNET_MODEL: ${ANTHROPIC_SONNET_MODEL:-claude-sonnet-4-20250514}
+      ANTHROPIC_HAIKU_MODEL: ${ANTHROPIC_HAIKU_MODEL:-claude-3-5-haiku-20241022}
+      AI_MEMORY_LIMIT: ${AI_MEMORY_LIMIT:-500}
       PUTER_AUTH_TOKEN: ${PUTER_AUTH_TOKEN:-}
       PUTER_MODEL: ${PUTER_MODEL:-}
     ports:

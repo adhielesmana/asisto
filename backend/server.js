@@ -5,6 +5,7 @@ const { Blob: NodeBlob, File: NodeFile } = require('node:buffer')
 const Fastify = require('fastify')
 const cors = require('@fastify/cors')
 const axios = require('axios')
+const aiWorkflow = require('./ai/workflow')
 
 const fastify = Fastify({ logger: true })
 
@@ -410,11 +411,33 @@ fastify.get('/api/health', async () => {
     status: 'ASISTO Backend Running',
     ollamaModel: OLLAMA_MODEL,
     puterConfigured: Boolean(PUTER_AUTH_TOKEN),
+    workflow: aiWorkflow.getWorkflowHealth(),
   }
 })
 
+fastify.get('/api/ai/models', async () => {
+  return aiWorkflow.getWorkflowRegistry()
+})
+
+fastify.get('/api/ai/tasks/:taskId', async (req, reply) => {
+  const { taskId } = req.params || {}
+
+  if (!taskId || typeof taskId !== 'string') {
+    reply.code(400)
+    return { error: 'taskId is required.' }
+  }
+
+  const snapshot = await aiWorkflow.getTaskSnapshot(taskId)
+  if (!snapshot) {
+    reply.code(404)
+    return { error: 'Task not found.' }
+  }
+
+  return snapshot
+})
+
 fastify.post('/api/ai/ask', async (req, reply) => {
-  const { prompt, preferKnowledge = false } = req.body || {}
+  const { prompt, preferKnowledge = false, phase, mode, taskId = '', context = '' } = req.body || {}
 
   if (!prompt || !String(prompt).trim()) {
     reply.code(400)
@@ -422,6 +445,23 @@ fastify.post('/api/ai/ask', async (req, reply) => {
   }
 
   try {
+    const requestedPhase = String(phase || mode || '').trim()
+    if (requestedPhase) {
+      const workflowResult = await aiWorkflow.handleWorkflowRequest({
+        phase: requestedPhase,
+        prompt: String(prompt).trim(),
+        taskId: String(taskId || '').trim(),
+        context: String(context || '').trim(),
+      })
+
+      if (!workflowResult) {
+        reply.code(400)
+        return { error: `Unsupported phase "${requestedPhase}".` }
+      }
+
+      return workflowResult
+    }
+
     const result = await resolvePrompt(String(prompt).trim(), Boolean(preferKnowledge))
     return result
   } catch (error) {

@@ -36,7 +36,7 @@ fi
 log "Refreshing the Ollama container"
 $COMPOSE_CMD up -d ollama
 
-log "Ensuring the configured Ollama model exists inside Docker"
+log "Ensuring the Ollama action and coder models exist inside Docker"
 COMPOSE_PROFILES=init $COMPOSE_CMD run --rm ollama-init
 
 log "Rebuilding and restarting the stack"

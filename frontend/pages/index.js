@@ -229,9 +229,9 @@ export default function Home() {
           <div key={node.path}>
             <div
               style={{ paddingLeft: level * 16 }}
-              className={`folder-item ${node.type === 'folder' && activeThread.folder === `environments/${node.path}` ? 'active' : ''}`}
+              className={`folder-item ${node.type === 'folder' && activeThread && activeThread.folder === `environments/${node.path}` ? 'active' : ''}`}
               onClick={() => {
-                if (node.type === 'folder') {
+                if (node.type === 'folder' && activeThread) {
                   setThreads(threads.map((t) => (t.id === activeThreadId ? { ...t, folder: `environments/${node.path}` } : t)))
                 }
               }}

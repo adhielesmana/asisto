@@ -43,7 +43,7 @@ docker-compose pull ollama
 echo "Starting Ollama container..."
 docker-compose up -d ollama
 
-echo "Creating asisto-coder inside Docker..."
+echo "Creating asisto-coder and pulling the Ollama action model inside Docker..."
 COMPOSE_PROFILES=init docker-compose run --rm ollama-init
 
 echo "Starting ASISTO stack..."
