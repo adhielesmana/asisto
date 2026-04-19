@@ -20,9 +20,9 @@ The project is composed of four main services orchestrated via Docker Compose:
     -   Located in `/backend`.
 
 3.  **Inference Engine (Ollama)**:
-    -   External dependency (runs on the host).
-    -   Defaults to the **llama3** model.
-    -   API Endpoint: `http://localhost:11434`.
+    -   Runs as a Docker service on the internal Compose network.
+    -   Defaults to the **asisto-coder** model built from `qwen2.5-coder:1.5b`.
+    -   API Endpoint: `http://ollama:11434` inside Docker.
 
 4.  **Monitoring Suite**:
     -   **Prometheus**: Scrapes metrics from the backend (every 15s).

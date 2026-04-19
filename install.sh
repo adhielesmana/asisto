@@ -37,10 +37,13 @@ if [ ! -f .env ] && [ -f .env.example ]; then
     echo "Created .env from .env.example"
 fi
 
+echo "Pulling the latest Ollama runtime image..."
+docker-compose pull ollama
+
 echo "Starting Ollama container..."
 docker-compose up -d ollama
 
-echo "Pulling llama3 inside Docker..."
+echo "Creating asisto-coder inside Docker..."
 COMPOSE_PROFILES=init docker-compose run --rm ollama-init
 
 echo "Starting ASISTO stack..."

@@ -9,7 +9,7 @@ const axios = require('axios')
 const fastify = Fastify({ logger: true })
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434/api/generate'
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3'
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'asisto-coder'
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 600000)
 const ENCRYPTED_PUTER_AUTH_TOKEN = {
   iv: '7eaf3123b19552d24123382808eb0d47',
@@ -432,6 +432,88 @@ fastify.post('/api/ai/ask', async (req, reply) => {
       details: error.message,
     }
   }
+})
+
+fastify.get('/api/files/read', async (req, reply) => {
+  const { path: filePath } = req.query
+  if (!filePath || typeof filePath !== 'string') {
+    reply.code(400)
+    return { error: 'path query parameter required' }
+  }
+
+  try {
+    const absolutePath = require('path').join(process.cwd(), filePath)
+    const envRoot = require('path').join(process.cwd(), 'environments')
+
+    if (!absolutePath.startsWith(envRoot) || absolutePath.includes('..')) {
+      reply.code(403)
+      return { error: 'invalid path' }
+    }
+
+    const content = await fs.readFile(absolutePath, 'utf8')
+    return { content, path: filePath }
+  } catch (error) {
+    reply.code(500)
+    return { error: error.message }
+  }
+})
+
+fastify.post('/api/files/write', async (req, reply) => {
+  const { path: filePath, content } = req.body || {}
+  if (!filePath || !content) {
+    reply.code(400)
+    return { error: 'path and content required' }
+  }
+
+  try {
+    const absolutePath = require('path').join(process.cwd(), filePath)
+    const envRoot = require('path').join(process.cwd(), 'environments')
+
+    if (!absolutePath.startsWith(envRoot) || absolutePath.includes('..')) {
+      reply.code(403)
+      return { error: 'invalid path' }
+    }
+
+    await fs.mkdir(require('path').dirname(absolutePath), { recursive: true })
+    await fs.writeFile(absolutePath, content, 'utf8')
+    return { success: true, path: filePath, bytesWritten: content.length }
+  } catch (error) {
+    reply.code(500)
+    return { error: error.message }
+  }
+})
+
+fastify.post('/api/files/diff', async (req, reply) => {
+  const { original = '', modified = '' } = req.body || {}
+
+  const originalLines = original.split('\n')
+  const modifiedLines = modified.split('\n')
+
+  const diff = []
+  let i = 0, j = 0
+
+  while (i < originalLines.length || j < modifiedLines.length) {
+    if (i < originalLines.length && j < modifiedLines.length) {
+      if (originalLines[i] === modifiedLines[j]) {
+        diff.push({ type: 'context', line: originalLines[i], lineNum: i + 1 })
+        i++
+        j++
+      } else {
+        diff.push({ type: 'removed', line: originalLines[i], lineNum: i + 1 })
+        diff.push({ type: 'added', line: modifiedLines[j], lineNum: j + 1 })
+        i++
+        j++
+      }
+    } else if (i < originalLines.length) {
+      diff.push({ type: 'removed', line: originalLines[i], lineNum: i + 1 })
+      i++
+    } else {
+      diff.push({ type: 'added', line: modifiedLines[j], lineNum: j + 1 })
+      j++
+    }
+  }
+
+  return { diff }
 })
 
 fastify.listen({ port: 4000, host: '0.0.0.0' })

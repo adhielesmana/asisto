@@ -13,835 +13,891 @@ function getApiUrl() {
   return '/api/ai/ask'
 }
 
-const EditorIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+const ChevronIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </svg>
 )
 
-const ChatIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+const PlusIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+  </svg>
 )
 
 const FolderIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-)
-
-const SettingsIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a1.65 1.65 0 0 0 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+  </svg>
 )
 
 export default function Home() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'ai',
-      content:
-        'Welcome to ASISTO IDE! 🚀\nI can help you build your application. Try asking for some code, and you can apply it directly to the editor using the "APPLY" button and then run it in the terminal.',
-    },
-  ])
+  const [threads, setThreads] = useState([])
+  const [activeThreadId, setActiveThreadId] = useState(null)
+  const [folderTree, setFolderTree] = useState([])
+  const [showFolders, setShowFolders] = useState(true)
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
-  const [code, setCode] = useState(
-    `// Welcome to ASISTO IDE\n\nfunction helloWorld() {\n  console.log("Modern UI is here!");\n}\n\nhelloWorld();`
-  )
-  const [activeTab, setActiveTab] = useState('chat')
-  const [terminalLogs, setTerminalLogs] = useState([
-    { type: 'info', text: 'Initializing ASISTO environment...' },
-    { type: 'info', text: 'Backend connected to http://localhost:4000' },
-  ])
-  const [envTree, setEnvTree] = useState([])
-  const [selectedFile, setSelectedFile] = useState(null)
+  const [codeOutput, setCodeOutput] = useState('')
+  const [diffView, setDiffView] = useState(null)
+  const [suggestedFilename, setSuggestedFilename] = useState('')
   const chatEndRef = useRef(null)
 
-  const scrollToBottom = () => {
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [threads])
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  useEffect(() => {
-    const loadTree = async () => {
+    const loadFolders = async () => {
       try {
         const res = await fetch('/api/environments')
-        if (!res.ok) throw new Error('Unable to load environment tree')
-        const data = await res.json()
-        setEnvTree(data.environments || [])
-        const firstFile = findFirstFile(data.environments || [])
-        if (firstFile) {
-          loadEnvFile(firstFile)
+        if (res.ok) {
+          const data = await res.json()
+          setFolderTree(data.environments || [])
         }
       } catch (error) {
-        setTerminalLogs((prev) => [...prev, { type: 'error', text: 'Unable to load environments.' }])
+        console.error('Failed to load environments:', error)
       }
     }
-
-    loadTree()
+    loadFolders()
   }, [])
 
-  const applyCode = (newCode) => {
-    setCode(newCode)
-    setTerminalLogs((prev) => [...prev, { type: 'success', text: 'Applied new code to editor.' }])
+  const activeThread = threads.find((t) => t.id === activeThreadId)
+
+  const extractCodeBlocks = (text) => {
+    const regex = /```(?:javascript|js|typescript|ts|jsx|tsx|python|py|html|css|json)?\n([\s\S]*?)```/g
+    const blocks = []
+    let match
+    while ((match = regex.exec(text)) !== null) {
+      blocks.push(match[1].trim())
+    }
+    return blocks
   }
 
-  const runCode = () => {
-    setTerminalLogs((prev) => [...prev, { type: 'info', text: 'Running index.js...' }])
-    setTimeout(() => {
-      setTerminalLogs((prev) => [...prev, { type: 'output', text: '> Modern UI is here!' }])
-    }, 500)
+  const generateDiff = async (code) => {
+    try {
+      const filename = `generated_${Date.now()}.js`
+      setSuggestedFilename(filename)
+
+      // Fetch existing file if it exists (for diff comparison)
+      try {
+        await axios.get('/api/files/read', {
+          params: { path: `${activeThread.folder}/${filename}` }
+        })
+      } catch (e) {
+        // File doesn't exist, that's fine - diff will be all additions
+      }
+
+      // Generate diff showing what will be added
+      const diffRes = await axios.post('/api/files/diff', {
+        original: '',
+        modified: code
+      })
+
+      setDiffView(diffRes.data.diff || [])
+    } catch (error) {
+      console.error('Failed to generate diff:', error)
+      setDiffView(null)
+    }
   }
 
   const askAI = async () => {
     if (!prompt.trim()) return
 
-    const userMessage = { role: 'user', content: prompt }
-    setMessages((prev) => [...prev, userMessage])
+    const newMessages = [
+      ...activeThread.messages,
+      { role: 'user', content: prompt, timestamp: new Date().toISOString() },
+    ]
+
+    setThreads(threads.map((t) => (t.id === activeThreadId ? { ...t, messages: newMessages } : t)))
     setPrompt('')
     setLoading(true)
+    setDiffView(null)
 
     try {
-      const res = await axios.post(getApiUrl(), {
-        prompt: prompt,
-        preferKnowledge: false,
-      })
+      const res = await axios.post(getApiUrl(), { prompt, preferKnowledge: false })
 
-      const aiResponse = {
-        role: 'ai',
-        content: res.data.response,
-        metadata: {
-          provider: res.data.provider,
-          model: res.data.model,
-          strategy: res.data.strategy,
-        },
+      const codeBlocks = extractCodeBlocks(res.data.response)
+      if (codeBlocks.length > 0) {
+        const code = codeBlocks[0]
+        setCodeOutput(code)
+        if (activeThread.folder) {
+          await generateDiff(code)
+        }
       }
-      setMessages((prev) => [...prev, aiResponse])
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'ai', content: `Error: ${err.response?.data?.details || 'Request failed.'}`, isError: true },
-      ])
+
+      const newMessages2 = [
+        ...newMessages,
+        {
+          role: 'ai',
+          content: res.data.response,
+          codeBlocks,
+          metadata: res.data,
+          timestamp: new Date().toISOString(),
+        },
+      ]
+
+      setThreads(threads.map((t) => (t.id === activeThreadId ? { ...t, messages: newMessages2 } : t)))
+    } catch (error) {
+      const errorMsg = [
+        ...newMessages,
+        { role: 'ai', content: `Error: ${error.response?.data?.details || 'Request failed'}`, isError: true },
+      ]
+      setThreads(threads.map((t) => (t.id === activeThreadId ? { ...t, messages: errorMsg } : t)))
     } finally {
       setLoading(false)
     }
   }
 
-  const renderContentWithCodeAction = (content) => {
-    const codeBlockRegex = /```(?:[a-z]+)?\n([\s\S]*?)```/g
-    const parts = []
-    let lastIndex = 0
-    let match
+  const applyCode = async () => {
+    if (!activeThread.folder || !codeOutput) return
 
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(<span key={lastIndex}>{content.slice(lastIndex, match.index)}</span>)
-      }
-      const codeToApply = match[1]
-      parts.push(
-        <div key={match.index} className="code-container">
-          <pre>{codeToApply}</pre>
-          <button className="apply-code-btn" onClick={() => applyCode(codeToApply)}>
-            APPLY TO EDITOR
-          </button>
-        </div>
-      )
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < content.length) {
-      parts.push(<span key={lastIndex}>{content.slice(lastIndex)}</span>)
-    }
-
-  return parts.length > 0 ? parts : content
-  }
-
-  const findFirstFile = (nodes) => {
-    if (!nodes?.length) return null
-    for (const node of nodes) {
-      if (node.type === 'file') return node
-      if (node.children?.length) {
-        const deep = findFirstFile(node.children)
-        if (deep) return deep
-      }
-    }
-    return null
-  }
-
-  const loadEnvFile = async (node) => {
-    if (!node || node.type !== 'file') return
     try {
-      const res = await fetch(`/api/env-file?path=${encodeURIComponent(node.path)}`)
-      if (!res.ok) throw new Error('failed to load')
-      const text = await res.text()
-      setCode(text)
-      setSelectedFile(node)
-      setTerminalLogs((prev) => [...prev, { type: 'info', text: `Loaded ${node.name}` }])
+      await axios.post('/api/files/write', {
+        path: `${activeThread.folder}/${suggestedFilename}`,
+        content: codeOutput,
+      })
+
+      const newMessages = [
+        ...activeThread.messages,
+        {
+          role: 'system',
+          content: `✅ Applied to ${activeThread.folder}/${suggestedFilename}`,
+          isSystem: true,
+        },
+      ]
+      setThreads(threads.map((t) => (t.id === activeThreadId ? { ...t, messages: newMessages } : t)))
+      setCodeOutput('')
+      setDiffView(null)
+      setSuggestedFilename('')
     } catch (error) {
-      setTerminalLogs((prev) => [...prev, { type: 'error', text: `Unable to load ${node.name}` }])
+      console.error('Failed to apply:', error)
     }
   }
 
-  const renderEnvNode = (node, level = 0) => {
-    if (!node) return null
-    if (node.type === 'folder') {
-      return (
-        <div key={node.path} className="env-folder">
-          <div className="env-folder-label" style={{ paddingLeft: level * 12 + 12 }}>
-            {node.name}
-          </div>
-          <div className="env-folder-children">{node.children?.map((child) => renderEnvNode(child, level + 1))}</div>
-        </div>
-      )
-    }
-
+  const renderFolderTree = (nodes, level = 0) => {
     return (
-      <div
-        key={node.path}
-        className={`env-file ${selectedFile?.path === node.path ? 'active' : ''}`}
-        style={{ paddingLeft: level * 12 + 24 }}
-        onClick={() => loadEnvFile(node)}
-      >
-        {node.name}
-      </div>
+      <>
+        {nodes.map((node) => (
+          <div key={node.path}>
+            <div
+              style={{ paddingLeft: level * 16 }}
+              className={`folder-item ${node.type === 'folder' && activeThread.folder === `environments/${node.path}` ? 'active' : ''}`}
+              onClick={() => {
+                if (node.type === 'folder') {
+                  setThreads(threads.map((t) => (t.id === activeThreadId ? { ...t, folder: `environments/${node.path}` } : t)))
+                }
+              }}
+            >
+              {node.type === 'folder' ? (
+                <>
+                  <FolderIcon /> {node.name}
+                </>
+              ) : (
+                <span style={{ opacity: 0.6 }}>└ {node.name}</span>
+              )}
+            </div>
+            {node.type === 'folder' && node.children && renderFolderTree(node.children, level + 1)}
+          </div>
+        ))}
+      </>
     )
   }
 
   return (
-    <div className="app-shell">
+    <div className="layout">
       <Head>
-        <title>ASISTO | AI Editor</title>
-        <meta name="description" content="Next generation AI-powered coding workspace" />
+        <title>ASISTO - Claude Code Style</title>
       </Head>
 
-      <div className="app-header">
-        <div className="brand">
-          <div className="brand-icon">AS</div>
-          <div>
-            <div className="brand-title">ASISTO AI Dev Cloud</div>
-            <div className="brand-subtitle">Replit/Antigravity inspired workspace with Codex vibes.</div>
-          </div>
+      {/* LEFT SIDEBAR */}
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <button
+            className="btn-new"
+            onClick={() => {
+              const newId = Math.max(...threads.map((t) => t.id), 0) + 1
+              setThreads([...threads, { id: newId, name: `Session ${newId}`, messages: [], folder: null }])
+              setActiveThreadId(newId)
+            }}
+          >
+            <PlusIcon /> New
+          </button>
         </div>
-        <div className="header-actions">
-          <div className="status-chip">llama3 • local</div>
-          <div className="status-chip subtle">Puter fallback ready</div>
-          <button className="primary-btn">New Session</button>
+
+        <div className="sidebar-content">
+          <div className="sessions-label">SESSIONS</div>
+          {threads.map((thread) => (
+            <div
+              key={thread.id}
+              className={`session-item ${activeThreadId === thread.id ? 'active' : ''}`}
+              onClick={() => setActiveThreadId(thread.id)}
+            >
+              <div className="session-name">{thread.name}</div>
+              {threads.length > 1 && (
+                <button
+                  className="btn-delete"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const remaining = threads.filter((t) => t.id !== thread.id)
+                    setThreads(remaining)
+                    if (activeThreadId === thread.id) {
+                      setActiveThreadId(remaining[0].id)
+                    }
+                  }}
+                >
+                  <TrashIcon />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="section-header">
+            <button className="btn-toggle-folders" onClick={() => setShowFolders(!showFolders)}>
+              {showFolders ? '▼' : '▶'}
+            </button>
+            <span>ENVIRONMENTS</span>
+          </div>
+          {showFolders && (
+            <div className="folders-list">
+              {folderTree.length === 0 ? (
+                <div className="empty-folders">No environments found</div>
+              ) : (
+                renderFolderTree(folderTree)
+              )}
+            </div>
+          )}
+          {activeThread && activeThread.folder && (
+            <div className="selected-folder-badge">
+              ✓ Working in: <strong>{activeThread.folder.replace('environments/', '')}</strong>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="workspace-grid">
-        <div className="explorer-column">
-          <div className="activity-bar">
-            <button className={`icon-btn ${activeTab === 'explorer' ? 'active' : ''}`} onClick={() => setActiveTab('explorer')}>
-              <FolderIcon />
-            </button>
-            <button className={`icon-btn ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
-              <ChatIcon />
-            </button>
-            <div className="activity-spacer" />
-            <button className="icon-btn secondary">
-              <SettingsIcon />
-            </button>
-          </div>
-          <div className="sidebar glass">
-            <div className="panel-header">{activeTab === 'explorer' ? 'Explorer' : 'Chat History'}</div>
-            <div className="sidebar-content">
-              {activeTab === 'explorer' ? (
-                envTree.length ? (
-                envTree.map((node) => (
-                  <div key={`root-${node.path}`} className="env-tree-root">
-                    {renderEnvNode(node)}
-                  </div>
-                ))
-                ) : (
-                  <div className="empty-history">
-                    <div>No environments detected yet.</div>
-                    <small>Run `./deploy.sh` to create environment folders.</small>
-                  </div>
-                )
-              ) : (
-                <div className="empty-history">
-                  <div>No past conversations yet.</div>
-                  <small>AI answers appear here once you start chatting.</small>
-                </div>
-              )}
-            </div>
+      {/* MAIN AREA */}
+      <div className="main">
+        {/* HEADER */}
+        <div className="header">
+          <div className="breadcrumb">
+            <span className="breadcrumb-item">asisto</span>
+            <span className="breadcrumb-sep">/</span>
+            <span className="breadcrumb-item">
+              {activeThread ? (activeThread.folder ? activeThread.folder : 'Select environment') : 'Create new session'}
+            </span>
           </div>
         </div>
 
-        <div className="workspace-column glass">
-          <div className="workspace-header">
-            <div className="workspace-title">
-              <span className="workspace-indicator" />
-              index.js — asisto-frontend
+        {/* CONTENT AREA */}
+        <div className="content">
+          {!activeThread ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">+</div>
+              <div className="empty-state-text">Create a new session to get started</div>
+              <button
+                className="empty-state-btn"
+                onClick={() => {
+                  const newId = 1
+                  setThreads([{ id: newId, name: 'Session 1', messages: [], folder: null }])
+                  setActiveThreadId(newId)
+                }}
+              >
+                New Session
+              </button>
             </div>
-            <div className="workspace-controls">
-              <button className="ghost-btn" onClick={runCode}>
-                RUN
+          ) : (
+            <>
+          {/* CHAT */}
+          <div className="chat-area">
+            <div className="messages">
+              {activeThread?.messages.map((msg, i) => (
+                <div key={i} className={`message message-${msg.role} ${msg.isError ? 'error' : ''} ${msg.isSystem ? 'system' : ''}`}>
+                  <div className="message-label">
+                    {msg.role === 'user' ? 'You' : msg.role === 'ai' ? 'ASISTO' : 'System'}
+                  </div>
+                  <div className="message-text">
+                    {msg.content}
+                  </div>
+                  {msg.metadata && (
+                    <div className="message-meta">
+                      {msg.metadata.provider} • {msg.metadata.model}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            <div className="input-area">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    askAI()
+                  }
+                }}
+                placeholder="Describe what you want to build..."
+                className="input-box"
+              />
+              <button onClick={askAI} disabled={loading || !prompt.trim()} className="btn-send">
+                {loading ? '...' : 'Send'}
               </button>
             </div>
           </div>
 
-          <div className="editor-grid">
-            <div className="line-numbers">
-              {code.split('\n').map((_, i) => (
-                <span key={i}>{i + 1}</span>
-              ))}
-            </div>
-            <textarea value={code} onChange={(e) => setCode(e.target.value)} spellCheck="false" className="code-editor" />
-          </div>
-
-          <div className="editor-status-bar">
-            <span>UTF-8</span>
-            <span>JavaScript</span>
-            <span className="status-spacer" />
-            <span>
-              Ln {code.split('\n').length}, Col {code.split('\n').pop().length + 1}
-            </span>
-          </div>
-
-          <div className="terminal-area">
-            <div className="terminal-header">
-              <div className="terminal-tab active">TERMINAL</div>
-              <div className="terminal-tab">OUTPUT</div>
-              <div className="terminal-tab">DEBUG</div>
-            </div>
-            <div className="terminal-content">
-              {terminalLogs.map((log, i) => (
-                <div key={i} className={`terminal-log ${log.type}`}>
-                  <span className="log-label">[{log.type.toUpperCase()}]</span>
-                  <span>{log.text}</span>
+              {/* CODE OUTPUT */}
+              {codeOutput && (
+                <div className="code-area">
+                  <div className="code-header">
+                    <div>{diffView ? 'Diff Preview' : 'Generated Code'} {suggestedFilename && <span className="filename">{suggestedFilename}</span>}</div>
+                    <button onClick={applyCode} disabled={!activeThread.folder} className="btn-apply">
+                      {activeThread.folder ? 'Apply' : 'Select folder'}
+                    </button>
+                  </div>
+                  <div className="code-block">
+                    {diffView ? (
+                      <div className="diff-container">
+                        {diffView.map((item, i) => (
+                          <div key={i} className={`diff-line diff-${item.type}`}>
+                            <span className="diff-line-num">{item.lineNum}</span>
+                            <span className="diff-marker">{item.type === 'removed' ? '−' : item.type === 'added' ? '+' : ' '}</span>
+                            <span className="diff-content">{item.line}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <pre style={{ margin: 0 }}>{codeOutput}</pre>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              )}
+            </>
+          )}
         </div>
-
-        <aside className="assistant-panel glass">
-          <div className="panel-header">
-            <ChatIcon />
-            <span>AI ASSISTANT</span>
-          </div>
-          <div className="chat-history">
-            {messages.map((m, i) => (
-              <div key={i} className={`message ${m.role} ${m.isError ? 'error' : ''}`}>
-                <div className="message-header">
-                  <span className="message-label">{m.role === 'ai' ? 'ASISTO BOT' : 'DEVELOPER'}</span>
-                  {m.metadata && <span className="message-meta">{m.metadata.model}</span>}
-                </div>
-                <div className="message-body">{m.role === 'ai' ? renderContentWithCodeAction(m.content) : m.content}</div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-          <div className="chat-input-area">
-            <textarea
-              rows={3}
-              placeholder="How should I modify the code?"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  askAI()
-                }
-              }}
-            />
-            <button onClick={askAI} disabled={loading || !prompt.trim()} className="send-btn">
-              {loading ? <span className="loader"></span> : 'Send'}
-            </button>
-          </div>
-        </aside>
       </div>
 
       <style jsx>{`
+        * {
+          box-sizing: border-box;
+        }
+
         :global(body) {
           margin: 0;
-          font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
-          background: #05070c;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #0f0f0f;
+          color: #e5e5e5;
         }
 
-        .app-shell {
-          min-height: 100vh;
-          padding: 32px;
+        .layout {
           display: flex;
-          flex-direction: column;
-          gap: 24px;
-          color: #f5f5f5;
-          background: radial-gradient(circle at top, rgba(96, 165, 250, 0.25), transparent 45%) #020409;
-        }
-
-        .app-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 24px;
-          border-radius: 18px;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          box-shadow: 0 20px 45px rgba(2, 2, 5, 0.6);
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .brand-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 14px;
-          background: linear-gradient(135deg, #2563eb, #9333ea);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          letter-spacing: 0.05em;
-        }
-
-        .brand-title {
-          font-size: 18px;
-          font-weight: 700;
-        }
-
-        .brand-subtitle {
-          font-size: 12px;
-          color: rgba(226, 232, 240, 0.8);
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .status-chip {
-          padding: 6px 12px;
-          border-radius: 999px;
-          font-size: 11px;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        .status-chip.subtle {
-          opacity: 0.7;
-        }
-
-        .primary-btn {
-          background: linear-gradient(135deg, #f97316, #ec4899);
-          border: none;
-          color: #fff;
-          font-weight: 600;
-          padding: 10px 20px;
-          border-radius: 10px;
-          cursor: pointer;
-        }
-
-        .workspace-grid {
-          display: grid;
-          grid-template-columns: 100px minmax(0, 1fr) 320px;
-          gap: 20px;
-        }
-
-        @media (max-width: 1100px) {
-          .workspace-grid {
-            grid-template-columns: 80px minmax(0, 1fr);
-          }
-
-          .assistant-panel {
-            grid-column: 1 / -1;
-            order: 4;
-          }
-        }
-
-        .explorer-column {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .activity-bar {
-          background: rgba(15, 23, 42, 0.8);
-          border-radius: 16px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 16px 0;
-          gap: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .icon-btn {
-          width: 48px;
-          height: 48px;
-          border-radius: 14px;
-          border: none;
-          background: transparent;
-          color: #9ca3af;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .icon-btn.active {
-          background: rgba(37, 99, 235, 0.2);
-          color: #93c5fd;
-        }
-
-        .icon-btn.secondary {
-          margin-top: auto;
-        }
-
-        .activity-spacer {
-          flex: 1;
+          height: 100vh;
+          background: #0f0f0f;
         }
 
         .sidebar {
-          min-height: 320px;
+          width: 240px;
+          background: #1a1a1a;
+          border-right: 1px solid #333;
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
         }
 
-        .glass {
-          background: rgba(15, 23, 42, 0.85);
-          border-radius: 20px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          box-shadow: 0 25px 40px rgba(2, 6, 23, 0.7);
+        .sidebar-header {
+          padding: 16px;
+          border-bottom: 1px solid #333;
         }
 
-        .panel-header {
-          padding: 16px 24px;
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
+        .btn-new {
+          width: 100%;
+          padding: 8px 12px;
+          background: #2d2d2d;
+          border: 1px solid #444;
+          border-radius: 6px;
+          color: #e5e5e5;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.2s;
+        }
+
+        .btn-new:hover {
+          background: #3d3d3d;
+          border-color: #555;
         }
 
         .sidebar-content {
-          padding: 0 24px 24px;
-          font-size: 13px;
-          color: rgba(226, 232, 240, 0.85);
+          flex: 1;
+          padding: 12px 8px;
+          overflow-y: auto;
         }
 
-        .folder-tree {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .env-tree-root {
-          margin-bottom: 12px;
-        }
-
-        .env-folder-label {
-          font-size: 13px;
-          font-weight: 600;
+        .sessions-label {
+          font-size: 11px;
           text-transform: uppercase;
-          letter-spacing: 0.2em;
-          color: rgba(241, 245, 249, 0.8);
+          letter-spacing: 0.1em;
+          color: #888;
+          padding: 12px 8px;
           margin-bottom: 4px;
         }
 
-        .env-folder-children {
-          margin-left: 6px;
-        }
-
-        .env-file {
-          cursor: pointer;
-          padding: 6px 8px;
-          border-radius: 8px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: rgba(226, 232, 240, 0.9);
-        }
-
-        .env-file.active {
-          background: rgba(59, 130, 246, 0.2);
-          color: #bfdbfe;
-        }
-
-        .folder-item {
-          padding: 6px 10px;
-          border-radius: 8px;
-          cursor: pointer;
-        }
-
-        .folder-item.active {
-          background: rgba(37, 99, 235, 0.12);
-          color: #bfdbfe;
-        }
-
-        .empty-history {
-          font-size: 12px;
-          opacity: 0.7;
-        }
-
-        .workspace-column {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          padding: 24px;
-        }
-
-        .workspace-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .workspace-title {
+        .session-item {
           display: flex;
           align-items: center;
           gap: 8px;
-          font-weight: 600;
-          letter-spacing: 0.05em;
-        }
-
-        .workspace-indicator {
-          width: 10px;
-          height: 10px;
-          border-radius: 999px;
-          background: #10b981;
-          box-shadow: 0 0 10px #10b981;
-        }
-
-        .ghost-btn {
-          border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          padding: 8px 10px;
+          margin-bottom: 4px;
+          border-radius: 6px;
           background: transparent;
-          padding: 6px 14px;
-          color: #e5e7eb;
-          font-weight: 600;
           cursor: pointer;
+          transition: all 0.2s;
         }
 
-        .editor-grid {
-          display: flex;
-          border-radius: 18px;
+        .session-item:hover {
+          background: #2d2d2d;
+        }
+
+        .session-item.active {
+          background: #333;
+          border-left: 2px solid #4a9eff;
+          padding-left: 8px;
+        }
+
+        .session-name {
+          flex: 1;
+          font-size: 13px;
+          white-space: nowrap;
           overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(15, 23, 42, 0.9);
+          text-overflow: ellipsis;
         }
 
-        .line-numbers {
-          background: #0f172a;
-          padding: 20px 8px;
-          text-align: right;
-          color: #475569;
-          font-size: 12px;
-          font-family: 'JetBrains Mono', 'Fira Code', monospace;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          user-select: none;
-        }
-
-        .code-editor {
-          flex: 1;
-          padding: 20px;
-          border: none;
+        .btn-delete {
           background: transparent;
-          color: #f8fafc;
-          font-size: 14px;
-          font-family: 'JetBrains Mono', 'Fira Code', monospace;
-          min-height: 320px;
-          resize: none;
-          line-height: 1.6;
-          outline: none;
+          border: none;
+          color: #888;
+          cursor: pointer;
+          padding: 4px;
+          opacity: 0;
+          transition: all 0.2s;
         }
 
-        .editor-status-bar {
+        .session-item:hover .btn-delete {
+          opacity: 1;
+          color: #ff6b6b;
+        }
+
+        .sidebar-footer {
+          padding: 12px 8px;
+          border-top: 1px solid #333;
+        }
+
+        .section-header {
           display: flex;
-          padding: 0 12px 12px;
-          font-size: 12px;
-          color: rgba(243, 244, 246, 0.7);
           align-items: center;
-        }
-
-        .status-spacer {
-          flex: 1;
-        }
-
-        .terminal-area {
-          background: rgba(2, 6, 23, 0.75);
-          border-radius: 14px;
-          border: 1px solid rgba(148, 163, 184, 0.2);
-          padding: 12px;
-        }
-
-        .terminal-header {
-          display: flex;
-          gap: 12px;
-          font-size: 10px;
-          text-transform: uppercase;
-          letter-spacing: 0.2em;
+          gap: 6px;
+          padding: 8px 10px;
           margin-bottom: 8px;
         }
 
-        .terminal-tab {
-          padding: 4px 10px;
-          border-radius: 8px;
+        .btn-toggle-folders {
+          background: transparent;
+          border: none;
+          color: #888;
+          font-size: 12px;
           cursor: pointer;
-          background: rgba(148, 163, 184, 0.1);
-          color: rgba(226, 232, 240, 0.7);
-        }
-
-        .terminal-tab.active {
-          background: rgba(37, 99, 235, 0.2);
-          color: #f8fafc;
-        }
-
-        .terminal-content {
-          max-height: 160px;
-          overflow-y: auto;
-          font-size: 13px;
-          padding-right: 8px;
-        }
-
-        .terminal-log {
-          margin-bottom: 6px;
-        }
-
-        .terminal-log.info .log-label {
-          color: #60a5fa;
-        }
-
-        .terminal-log.output .log-label {
-          color: #34d399;
-        }
-
-        .terminal-log.success .log-label {
-          color: #10b981;
-        }
-
-        .terminal-log.error .log-label {
-          color: #f87171;
-        }
-
-        .log-label {
-          margin-right: 6px;
-        }
-
-        .assistant-panel {
+          padding: 0;
+          width: 16px;
           display: flex;
-          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
         }
 
-        .chat-history {
+        .btn-toggle-folders:hover {
+          color: #e5e5e5;
+        }
+
+        .section-header span {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: #888;
           flex: 1;
-          padding: 16px;
-          overflow-y: auto;
+        }
+
+        .folders-list {
+          margin-bottom: 12px;
+          padding: 8px 0;
+          font-size: 12px;
+          background: #0a0a0a;
+          border-radius: 6px;
+          padding: 8px;
+        }
+
+        .empty-folders {
+          padding: 12px 8px;
+          font-size: 12px;
+          color: #666;
+          text-align: center;
+        }
+
+        .selected-folder-badge {
+          padding: 10px 12px;
+          background: #2d5a7b;
+          border: 1px solid #4a9eff;
+          border-radius: 6px;
+          font-size: 11px;
+          color: #4a9eff;
+          margin-top: auto;
+        }
+
+        .selected-folder-badge strong {
+          color: #93d5ff;
+        }
+
+        .folder-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.2s;
+          color: #aaa;
+        }
+
+        .folder-item:hover {
+          background: #2d2d2d;
+          color: #e5e5e5;
+        }
+
+        .folder-item.active {
+          background: #2d5a7b;
+          color: #4a9eff;
+          font-weight: 500;
+        }
+
+        .main {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          background: #0f0f0f;
+          overflow: hidden;
+        }
+
+        .header {
+          padding: 16px 24px;
+          border-bottom: 1px solid #333;
+          background: #151515;
+        }
+
+        .breadcrumb {
+          font-size: 14px;
+          color: #999;
+        }
+
+        .breadcrumb-item {
+          color: #e5e5e5;
+        }
+
+        .breadcrumb-sep {
+          margin: 0 6px;
+          color: #555;
+        }
+
+        .content {
+          flex: 1;
+          display: flex;
+          gap: 0;
+          overflow: hidden;
+        }
+
+        .chat-area {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          border-right: 1px solid #333;
+          overflow: hidden;
+        }
+
+        .messages {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
         }
 
         .message {
-          padding: 12px;
-          border-radius: 14px;
-          background: rgba(15, 23, 42, 0.8);
+          line-height: 1.6;
+          font-size: 14px;
         }
 
-        .message.ai {
-          border: 1px solid rgba(59, 130, 246, 0.25);
-        }
-
-        .message.user {
-          border: 1px solid rgba(34, 197, 94, 0.25);
-        }
-
-        .message.error {
-          border-color: rgba(248, 113, 113, 0.7);
-        }
-
-        .message-header {
-          display: flex;
-          justify-content: space-between;
-          font-size: 10px;
-          letter-spacing: 0.2em;
+        .message-label {
+          font-size: 12px;
           text-transform: uppercase;
-          opacity: 0.7;
+          letter-spacing: 0.05em;
+          color: #888;
           margin-bottom: 4px;
+          font-weight: 600;
+        }
+
+        .message-user .message-label {
+          color: #4a9eff;
+        }
+
+        .message-ai .message-label {
+          color: #888;
+        }
+
+        .message-text {
+          color: #e5e5e5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+
+        .message.error .message-text {
+          color: #ff6b6b;
+        }
+
+        .message.system .message-text {
+          color: #86efac;
+          font-size: 13px;
         }
 
         .message-meta {
-          font-size: 9px;
+          font-size: 11px;
+          color: #666;
+          margin-top: 6px;
         }
 
-        .message-body {
-          font-size: 14px;
-          line-height: 1.6;
-        }
-
-        .chat-input-area {
-          padding: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
+        .input-area {
+          padding: 20px 24px;
+          border-top: 1px solid #333;
           display: flex;
           gap: 12px;
-          position: relative;
         }
 
-        .chat-input-area textarea {
+        .input-box {
           flex: 1;
-          border-radius: 12px;
-          border: 1px solid rgba(148, 163, 184, 0.3);
-          background: rgba(2, 6, 23, 0.7);
-          padding: 12px;
-          color: #f8fafc;
-          resize: none;
-          font-size: 13px;
-          font-family: 'Inter', sans-serif;
-        }
-
-        .send-btn {
-          border: none;
-          background: linear-gradient(135deg, #a855f7, #3b82f6);
-          color: #fff;
-          padding: 0 24px;
-          border-radius: 999px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-
-        .loader {
-          width: 14px;
-          height: 14px;
-          border: 2px solid #fff;
-          border-bottom-color: transparent;
-          border-radius: 50%;
-          animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-
-        .code-container pre {
-          background: #020617;
-          color: #f4f4f5;
-          padding: 12px;
+          background: #1a1a1a;
+          border: 1px solid #333;
           border-radius: 8px;
-          font-size: 12px;
-          overflow-x: auto;
-          font-family: 'JetBrains Mono', monospace;
+          padding: 12px;
+          color: #e5e5e5;
+          font-size: 13px;
+          font-family: inherit;
+          resize: none;
+          max-height: 100px;
         }
 
-        .code-container {
-          position: relative;
+        .input-box:focus {
+          outline: none;
+          border-color: #555;
+          background: #222;
         }
 
-        .apply-code-btn {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          border: none;
-          background: rgba(59, 130, 246, 0.9);
-          color: #fff;
-          padding: 4px 10px;
+        .btn-send {
+          padding: 10px 20px;
+          background: #2d2d2d;
+          border: 1px solid #444;
           border-radius: 6px;
-          font-size: 10px;
+          color: #e5e5e5;
+          font-weight: 500;
           cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .btn-send:hover:not(:disabled) {
+          background: #3d3d3d;
+          border-color: #555;
+        }
+
+        .btn-send:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .code-area {
+          flex: 0 0 45%;
+          display: flex;
+          flex-direction: column;
+          border-left: 1px solid #333;
+          background: #0a0a0a;
+          overflow: hidden;
+        }
+
+        .code-header {
+          padding: 16px 20px;
+          border-bottom: 1px solid #333;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .btn-apply {
+          padding: 6px 12px;
+          background: #2d5a7b;
+          border: 1px solid #4a9eff;
+          color: #4a9eff;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          transition: all 0.2s;
+        }
+
+        .btn-apply:hover:not(:disabled) {
+          background: #3d6a8b;
+        }
+
+        .btn-apply:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .code-block {
+          flex: 1;
+          margin: 0;
+          padding: 16px;
+          background: #1a1a1a;
+          overflow-y: auto;
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 12px;
+          line-height: 1.5;
+          color: #e5e5e5;
+          border: none;
+        }
+
+        .filename {
+          font-size: 11px;
+          color: #888;
+          margin-left: 12px;
+          font-weight: normal;
+        }
+
+        .diff-container {
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .diff-line {
+          display: flex;
+          align-items: flex-start;
+          padding: 2px 0;
+          color: #e5e5e5;
+        }
+
+        .diff-added {
+          background: rgba(16, 185, 129, 0.15);
+          color: #86efac;
+        }
+
+        .diff-removed {
+          background: rgba(239, 68, 68, 0.15);
+          color: #fca5a5;
+        }
+
+        .diff-context {
+          color: #999;
+        }
+
+        .diff-line-num {
+          display: inline-block;
+          width: 40px;
+          text-align: right;
+          padding-right: 12px;
+          color: #666;
+          user-select: none;
+        }
+
+        .diff-marker {
+          display: inline-block;
+          width: 20px;
+          text-align: center;
+          user-select: none;
+          font-weight: bold;
+        }
+
+        .diff-content {
+          flex: 1;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: #444;
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+
+        .empty-state {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #666;
+        }
+
+        .empty-state-icon {
+          font-size: 48px;
+          margin-bottom: 16px;
+          color: #444;
+          opacity: 0.5;
+        }
+
+        .empty-state-text {
+          font-size: 16px;
+          margin-bottom: 24px;
+          color: #888;
+        }
+
+        .empty-state-btn {
+          padding: 10px 24px;
+          background: #2d5a7b;
+          border: 1px solid #4a9eff;
+          color: #4a9eff;
+          border-radius: 6px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .empty-state-btn:hover {
+          background: #3d6a8b;
         }
       `}</style>
     </div>

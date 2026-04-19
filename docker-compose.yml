@@ -14,9 +14,10 @@ services:
       - ollama
     environment:
       OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      OLLAMA_BASE_MODEL: ${OLLAMA_BASE_MODEL:-qwen2.5-coder:1.5b}
+      OLLAMA_CUSTOM_MODEL: ${OLLAMA_CUSTOM_MODEL:-asisto-coder}
     volumes:
-      - ./docker/ollama/pull-model.sh:/scripts/pull-model.sh:ro
+      - ./docker/ollama:/scripts:ro
     entrypoint: ["/bin/sh", "/scripts/pull-model.sh"]
 
   backend:
@@ -26,7 +27,7 @@ services:
       - ollama
     environment:
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434/api/generate}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-asisto-coder}
       PUTER_AUTH_TOKEN: ${PUTER_AUTH_TOKEN:-}
       PUTER_MODEL: ${PUTER_MODEL:-}
     ports:
@@ -41,6 +42,8 @@ services:
       - backend
     ports:
       - "3100:3000"
+    volumes:
+      - ./environments:/app/environments
 
   prometheus:
     image: prom/prometheus

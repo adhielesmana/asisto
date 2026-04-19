@@ -24,10 +24,13 @@ get_compose_cmd() {
 COMPOSE_CMD="$(get_compose_cmd)"
 log "Using compose command: $COMPOSE_CMD"
 
+log "Pulling the latest Ollama runtime image"
+$COMPOSE_CMD pull ollama
+
 log "Starting Ollama inside Docker"
 $COMPOSE_CMD up -d ollama
 
-log "Pulling the configured Ollama model inside Docker"
+log "Pulling the base coder model and creating asisto-coder inside Docker"
 COMPOSE_PROFILES=init $COMPOSE_CMD run --rm ollama-init
 
 log "Building and starting the ASISTO stack"
