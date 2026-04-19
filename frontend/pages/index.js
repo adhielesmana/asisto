@@ -49,7 +49,10 @@ export default function Home() {
   const [codeOutput, setCodeOutput] = useState('')
   const [diffView, setDiffView] = useState(null)
   const [suggestedFilename, setSuggestedFilename] = useState('')
+  const [editingThreadId, setEditingThreadId] = useState(null)
+  const [editingName, setEditingName] = useState('')
   const chatEndRef = useRef(null)
+  const editInputRef = useRef(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -183,6 +186,24 @@ export default function Home() {
     }
   }
 
+  const startEditingSession = (threadId) => {
+    const thread = threads.find((t) => t.id === threadId)
+    setEditingThreadId(threadId)
+    setEditingName(thread.name)
+  }
+
+  const finishEditingSession = () => {
+    if (editingName.trim() && editingThreadId !== null) {
+      setThreads(
+        threads.map((t) =>
+          t.id === editingThreadId ? { ...t, name: editingName.trim() } : t
+        )
+      )
+    }
+    setEditingThreadId(null)
+    setEditingName('')
+  }
+
   const renderFolderTree = (nodes, level = 0) => {
     return (
       <>
@@ -241,8 +262,38 @@ export default function Home() {
               className={`session-item ${activeThreadId === thread.id ? 'active' : ''}`}
               onClick={() => setActiveThreadId(thread.id)}
             >
-              <div className="session-name">{thread.name}</div>
-              {threads.length > 1 && (
+              {editingThreadId === thread.id ? (
+                <input
+                  ref={editInputRef}
+                  autoFocus
+                  type="text"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation()
+                    if (e.key === 'Enter') {
+                      finishEditingSession()
+                    } else if (e.key === 'Escape') {
+                      setEditingThreadId(null)
+                    }
+                  }}
+                  onBlur={finishEditingSession}
+                  onClick={(e) => e.stopPropagation()}
+                  className="session-edit-input"
+                />
+              ) : (
+                <div
+                  className="session-name"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    startEditingSession(thread.id)
+                  }}
+                  title="Double-click to rename"
+                >
+                  {thread.name}
+                </div>
+              )}
+              {threads.length > 1 && !editingThreadId && (
                 <button
                   className="btn-delete"
                   onClick={(e) => {
@@ -485,6 +536,24 @@ export default function Home() {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          cursor: text;
+        }
+
+        .session-edit-input {
+          flex: 1;
+          background: #2d2d2d;
+          border: 1px solid #4a9eff;
+          border-radius: 4px;
+          color: #e5e5e5;
+          font-size: 13px;
+          padding: 4px 8px;
+          font-family: inherit;
+          outline: none;
+        }
+
+        .session-edit-input:focus {
+          border-color: #6bb3ff;
+          box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
         }
 
         .btn-delete {
